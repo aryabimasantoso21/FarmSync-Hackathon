@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+
+# GETH data
+vm-network/vm-A/gethData/geth/
+vm-network/vm-B/gethData/geth/
+vm-network/vm-A/gethData/keystore/
+vm-network/vm-B/gethData/keystore/
+*.ipc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+.nyc_output/
+
+# Temp
+tmp/
+temp/
+*.tmp

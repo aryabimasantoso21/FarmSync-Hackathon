@@ -1,0 +1,24 @@
+{
+  "name": "farmsync",
+  "version": "1.0.0",
+  "description": "FarmSync - Blockchain-MQTT Integration for Decentralized Sensor Ledger",
+  "scripts": {
+    "verify": "./verify-setup.sh",
+    "setup": "cd blockchain && npm install && cd ../middleware && npm install && cd ../mqtt && npm install",
+    "test": "cd blockchain && npm test"
+  },
+  "keywords": [
+    "blockchain",
+    "mqtt",
+    "iot",
+    "ethereum",
+    "smart-contracts",
+    "sensor-data"
+  ],
+  "author": "Aryabima Santoso",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aryabimasantoso21/FarmSync-Hackathon.git"
+  }
+}
