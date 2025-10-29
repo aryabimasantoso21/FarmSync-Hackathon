@@ -5,6 +5,7 @@
   "scripts": {
     "publish": "node publisher/sensorPublisher.js",
     "manual": "node publisher/manualPublisher.js",
+    "nfc": "node publisher/nfcPublisher.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

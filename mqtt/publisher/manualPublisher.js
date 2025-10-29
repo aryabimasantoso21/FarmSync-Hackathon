@@ -3,7 +3,7 @@ const readline = require('readline');
 require('dotenv').config();
 
 // MQTT Broker Configuration
-const BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
+const BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://172.26.225.89:1883';
 const TOPIC_TBS = 'tbs/received';
 
 // Connect to MQTT Broker

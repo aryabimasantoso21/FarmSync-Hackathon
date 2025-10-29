@@ -187,24 +187,43 @@ app.get('/api/admin/transactions', async (req, res) => {
           console.error('Failed to parse truckId:', e.message);
         }
         
-        const shipment = await contract.getShipment(truckId);
+        let shipment;
+        try {
+          shipment = await contract.getShipment(truckId);
+        } catch (e) {
+          console.error('Failed to get shipment:', truckId, e.message);
+          // Return empty shipment data if query fails
+          return null;
+        }
+        
+        if (!shipment) return null;
+        
         const amount = event.args.amount || event.args[0];
         const timestamp = event.args.timestamp || event.args[1];
         
+        // Safely parse shipment data
+        const estateId = String(shipment.estateId || shipment[0] || '');
+        const departureWeight = Number(shipment.departureWeight || shipment[1] || 0);
+        const arrivalWeight = Number(shipment.arrivalWeight || shipment[2] || 0);
+        const departureTimestamp = Number(shipment.departureTimestamp || shipment[3] || 0);
+        const arrivalTimestamp = Number(shipment.arrivalTimestamp || shipment[4] || 0);
+        const seller = String(shipment.seller || shipment[5] || '');
+        const buyer = String(shipment.buyer || shipment[6] || '');
+        
         return {
           truckId: truckId,
-          estateId: String(shipment[0] || shipment.estateId || ''),
-          from: String(shipment[6] || shipment.buyer || ''),
-          to: String(shipment[5] || shipment.seller || ''),
-          departureWeight: Number(shipment[2] || shipment.departureWeight || 0),
-          arrivalWeight: Number(shipment[3] || shipment.arrivalWeight || 0),
-          weightDiff: Number(shipment[2] || shipment.departureWeight || 0) - Number(shipment[3] || shipment.arrivalWeight || 0),
+          estateId: estateId,
+          from: buyer,
+          to: seller,
+          departureWeight: departureWeight,
+          arrivalWeight: arrivalWeight,
+          weightDiff: departureWeight - arrivalWeight,
           amount: ethers.formatEther(amount),
           amountIDR: convertToIDR(ethers.formatEther(amount)),
-          departureTime: new Date(Number(shipment[4] || shipment.departureTimestamp || 0) * 1000).toLocaleString(),
-          arrivalTime: new Date(Number(shipment[5] || shipment.arrivalTimestamp || 0) * 1000).toLocaleString(),
+          departureTime: new Date(departureTimestamp * 1000).toLocaleString(),
+          arrivalTime: new Date(arrivalTimestamp * 1000).toLocaleString(),
           paymentTime: new Date(Number(timestamp) * 1000).toLocaleString(),
-          status: (shipment[10] || shipment.paid) ? 'Paid' : 'Pending',
+          status: 'Paid',
           blockNumber: Number(event.blockNumber),
           txHash: event.transactionHash
         };
@@ -225,34 +244,57 @@ app.get('/api/admin/transactions', async (req, res) => {
           console.error('Failed to parse truckId:', e.message);
         }
         
-        const shipment = await contract.getShipment(truckId);
+        let shipment;
+        try {
+          shipment = await contract.getShipment(truckId);
+        } catch (e) {
+          console.error('Failed to get shipment:', truckId, e.message);
+          return null;
+        }
+        
+        if (!shipment) return null;
+        
+        // Safely parse shipment data
+        const estateId = String(shipment.estateId || shipment[0] || '');
+        const departureWeight = Number(shipment.departureWeight || shipment[1] || 0);
+        const arrivalWeight = Number(shipment.arrivalWeight || shipment[2] || 0);
+        const departureTimestamp = Number(shipment.departureTimestamp || shipment[3] || 0);
+        const arrivalTimestamp = Number(shipment.arrivalTimestamp || shipment[4] || 0);
+        const departed = Boolean(shipment.departed || shipment[7]);
+        const arrived = Boolean(shipment.arrived || shipment[8]);
+        const paid = Boolean(shipment.paid || shipment[9]);
         
         return {
           truckId: truckId,
-          estateId: String(shipment[0] || shipment.estateId || ''),
-          departureWeight: Number(shipment[2] || shipment.departureWeight || 0),
-          arrivalWeight: Number(shipment[3] || shipment.arrivalWeight || 0),
-          departed: Boolean(shipment[7] || shipment.departed),
-          arrived: Boolean(shipment[8] || shipment.arrived),
-          paid: Boolean(shipment[9] || shipment.paid),
-          departureTime: new Date(Number(shipment[4] || shipment.departureTimestamp || 0) * 1000).toLocaleString(),
-          arrivalTime: (shipment[8] || shipment.arrived) ? new Date(Number(shipment[5] || shipment.arrivalTimestamp || 0) * 1000).toLocaleString() : null
+          estateId: estateId,
+          departureWeight: departureWeight,
+          arrivalWeight: arrivalWeight,
+          departed: departed,
+          arrived: arrived,
+          paid: paid,
+          departureTime: new Date(departureTimestamp * 1000).toLocaleString(),
+          arrivalTime: arrived ? new Date(arrivalTimestamp * 1000).toLocaleString() : null
         };
       })
     );
 
+    // Filter out null values (failed queries)
+    const validTransactions = transactions.filter(tx => tx !== null);
+    const validShipments = allShipments.filter(s => s !== null);
+
     res.json({
-      paidTransactions: transactions.reverse(),
-      allShipments: allShipments.reverse(),
+      paidTransactions: validTransactions.reverse(),
+      allShipments: validShipments.reverse(),
       stats: {
-        totalTransactions: transactions.length,
-        totalShipments: allShipments.length,
-        pendingShipments: allShipments.filter(s => !s.paid).length,
-        totalVolume: allShipments.reduce((sum, s) => sum + s.arrivalWeight, 0),
-        totalValue: transactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0)
+        totalTransactions: validTransactions.length,
+        totalShipments: validShipments.length,
+        pendingShipments: validShipments.filter(s => !s.paid).length,
+        totalVolume: validShipments.reduce((sum, s) => sum + (s.arrivalWeight || 0), 0),
+        totalValue: validTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0)
       }
     });
   } catch (error) {
+    console.error('Error in /api/admin/transactions:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -108,6 +108,23 @@ class BlockchainHandler {
       console.log('   Weight:', weight, 'kg');
       console.log('   Estate ID:', estateId);
 
+      // Check if truck was used before
+      try {
+        const previousShipment = await this.contract.getShipment(truckId);
+        if (previousShipment.departed) {
+          if (previousShipment.paid) {
+            console.log('♻️  Truck reuse detected:');
+            console.log('   Previous shipment completed and paid');
+            console.log('   Truck ID is now available for new shipment ✅');
+          } else {
+            console.log('⚠️  Warning: Truck has existing active shipment');
+          }
+        }
+      } catch (e) {
+        // First time use - no previous shipment
+        console.log('🆕 First time use for this truck ID');
+      }
+
       // Get addresses from environment
       const sellerAddress = process.env.ESTATE_ADDRESS;
       const buyerAddress = process.env.MILL_ADDRESS;
@@ -249,6 +266,9 @@ class BlockchainHandler {
       console.log('✅ Payment successful!');
       console.log('   Block number:', receipt.blockNumber);
       console.log('   Payment released to Estate');
+      console.log('');
+      console.log('🎉 Shipment completed!');
+      console.log('   Truck ID:', truckId, 'is now available for reuse ♻️');
       console.log('---');
       
       return receipt;

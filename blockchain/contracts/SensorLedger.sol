@@ -175,7 +175,11 @@ contract SensorLedger {
         require(_weight > 0, "Weight must be positive");
         require(_seller != address(0), "Seller address required");
         require(_buyer != address(0), "Buyer address required");
-        require(!shipments[_truckId].departed, "Truck already departed");
+        
+        // Allow reuse if previous shipment is completed (paid)
+        if (shipments[_truckId].departed) {
+            require(shipments[_truckId].paid, "Truck already departed - previous shipment not completed");
+        }
 
         shipments[_truckId] = Shipment({
             estateId: _estateId,
