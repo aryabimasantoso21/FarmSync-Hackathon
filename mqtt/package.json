@@ -6,6 +6,8 @@
     "publish": "node publisher/sensorPublisher.js",
     "manual": "node publisher/manualPublisher.js",
     "nfc": "node publisher/nfcPublisher.js",
+    "mill1": "node publisher/mill1Publisher.js",
+    "mill2": "node publisher/mill2Publisher.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

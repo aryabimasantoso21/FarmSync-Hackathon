@@ -1,14 +1,33 @@
 const { ethers } = require('ethers');
 
 class BlockchainHandler {
-  constructor(rpcUrl, privateKey, contractAddress, contractABI) {
+  constructor(rpcUrl, mill1PrivateKey, mill2PrivateKey, contractAddress, contractABI) {
     this.rpcUrl = rpcUrl;
-    this.privateKey = privateKey;
+    
+    // Store both mill private keys
+    this.millKeys = {
+      '0x70997970C51812dc3A010C7d01b50e0d17dc79C8': mill1PrivateKey, // Mill 1
+      '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': mill2PrivateKey  // Mill 2
+    };
+    
+    // Use Mill 1 as default for non-payment operations
+    this.privateKey = mill1PrivateKey;
     this.contractAddress = contractAddress;
     this.contractABI = contractABI;
     this.provider = null;
     this.signer = null;
     this.contract = null;
+  }
+
+  /**
+   * Get the correct signer for a specific mill address
+   */
+  getSignerForMill(millAddress) {
+    const privateKey = this.millKeys[millAddress];
+    if (!privateKey) {
+      throw new Error(`No private key configured for mill address: ${millAddress}`);
+    }
+    return new ethers.Wallet(privateKey, this.provider);
   }
 
   /**
@@ -101,7 +120,7 @@ class BlockchainHandler {
   /**
    * Record truck departure (TAP-1)
    */
-  async recordDeparture(truckId, weight, estateId) {
+  async recordDeparture(truckId, weight, estateId, millAddress = null) {
     try {
       console.log('🚚 Recording truck departure (TAP-1)...');
       console.log('   Truck ID:', truckId);
@@ -118,6 +137,9 @@ class BlockchainHandler {
             console.log('   Truck ID is now available for new shipment ✅');
           } else {
             console.log('⚠️  Warning: Truck has existing active shipment');
+            console.log('   Waiting for previous transaction to complete...');
+            // Wait a bit for previous transaction to finalize
+            await new Promise(resolve => setTimeout(resolve, 3000));
           }
         }
       } catch (e) {
@@ -125,24 +147,29 @@ class BlockchainHandler {
         console.log('🆕 First time use for this truck ID');
       }
 
-      // Get addresses from environment
+      // Get addresses
       const sellerAddress = process.env.ESTATE_ADDRESS;
-      const buyerAddress = process.env.MILL_ADDRESS;
+      const buyerAddress = millAddress || process.env.MILL_ADDRESS; // Use millAddress from MQTT if provided
 
       if (!sellerAddress || !buyerAddress) {
-        throw new Error('ESTATE_ADDRESS and MILL_ADDRESS must be set in .env');
+        throw new Error('ESTATE_ADDRESS and buyer address must be set');
       }
 
       console.log('   Estate (Seller):', sellerAddress);
       console.log('   Mill (Buyer):', buyerAddress);
 
-      // Prepare transaction
+      // Get fresh nonce to avoid conflicts
+      const nonce = await this.signer.getNonce('pending');
+      console.log('   Using nonce:', nonce);
+
+      // Prepare transaction with explicit nonce
       const tx = await this.contract.recordDeparture(
         truckId,
         weight,
         estateId,
         sellerAddress,
-        buyerAddress
+        buyerAddress,
+        { nonce: nonce }
       );
       
       console.log('⏳ Transaction sent:', tx.hash);
@@ -156,6 +183,9 @@ class BlockchainHandler {
       console.log('   Status: Truck departed from estate');
       console.log('---');
       
+      // Small delay to ensure transaction is fully processed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       return receipt;
 
     } catch (error) {
@@ -167,58 +197,33 @@ class BlockchainHandler {
   /**
    * Record truck arrival (TAP-2) and process payment
    */
-  async recordArrival(truckId, weight, estateId) {
+  async recordArrival(truckId, weight, estateId, millAddress) {
     try {
-      console.log('🏭 Recording truck arrival (TAP-2)...');
-      console.log('   Truck ID:', truckId);
-      console.log('   Weight:', weight, 'kg');
-      console.log('   Estate ID:', estateId);
+      console.log(`\n📍 Recording TAP-2 (Arrival) for ${truckId}...`);
 
-      // Get current nonce for arrival transaction
-      const nonce = await this.signer.getNonce('latest');
-
-      // Step 1: Record arrival with explicit nonce and estate validation
-      const tx = await this.contract.recordArrival(truckId, weight, estateId, { nonce: nonce });
+      const nonce = await this.signer.getNonce('pending');
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const tx = await this.contract.recordArrival(truckId, weight, estateId, {
+        nonce: nonce,
+        gasLimit: 300000
+      });
       
       console.log('⏳ Transaction sent:', tx.hash);
-      console.log('   Waiting for confirmation...');
-
       const receipt = await tx.wait();
-      
       console.log('✅ Arrival recorded!');
-      console.log('   Block number:', receipt.blockNumber);
 
-      // Step 2: Check weight validity
+      // Get shipment details to calculate payment
       const shipment = await this.contract.getShipment(truckId);
-      const isValid = await this.contract.isWeightValid(
-        shipment.departureWeight,
-        shipment.arrivalWeight
-      );
+      const arrivalWeight = shipment.arrivalWeight;
+      const pricePerKg = ethers.parseEther('0.001'); // 0.001 ETH per kg
 
-      console.log('⚖️  Weight validation:');
-      console.log('   Departure weight:', shipment.departureWeight.toString(), 'kg');
-      console.log('   Arrival weight:', shipment.arrivalWeight.toString(), 'kg');
-      console.log('   Weight valid:', isValid);
+      // Automatically release payment with correct mill address
+      console.log(`\n💰 Triggering automatic payment for mill ${millAddress}...`);
+      await this.releasePayment(truckId, arrivalWeight, pricePerKg, millAddress);
 
-      if (isValid) {
-        console.log('💰 Initiating automatic payment...');
-        
-        // Get price per kg from environment
-        const pricePerKg = BigInt(process.env.PRICE_PER_KG || '1000000000000000');
-        
-        // Add small delay to ensure arrival transaction is fully processed
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Release payment with arrival weight
-        await this.releasePayment(truckId, shipment.arrivalWeight, pricePerKg);
-      } else {
-        console.log('❌ FRAUD DETECTED! Weight difference exceeds tolerance.');
-        console.log('   Payment blocked - Mill funds protected');
-      }
-
-      console.log('---');
       return receipt;
-
     } catch (error) {
       console.error('❌ Error recording arrival:', error.message);
       throw error;
@@ -228,9 +233,9 @@ class BlockchainHandler {
   /**
    * Release payment from Mill to Estate after successful arrival
    */
-  async releasePayment(truckId, arrivalWeight, pricePerKg) {
+  async releasePayment(truckId, arrivalWeight, pricePerKg, millAddress) {
     try {
-      console.log('💸 Processing payment...');
+      console.log(`💸 Processing payment for mill ${millAddress}...`);
 
       // Get shipment details
       const shipment = await this.contract.getShipment(truckId);
@@ -243,12 +248,21 @@ class BlockchainHandler {
       console.log('   From (Mill):', shipment.buyer);
       console.log('   To (Estate):', shipment.seller);
 
-      // Get current nonce to prevent nonce conflicts
-      const nonce = await this.signer.getNonce('latest');
+      // Get the correct signer for this mill
+      const millSigner = this.getSignerForMill(millAddress);
+      const millContract = new ethers.Contract(
+        this.contractAddress,
+        this.contractABI,
+        millSigner
+      );
+
+      // Get fresh nonce using 'pending'
+      const nonce = await millSigner.getNonce('pending');
       console.log('   Using nonce:', nonce);
+      console.log('   Signing with:', millAddress);
 
       // Prepare transaction with payment and explicit nonce
-      const tx = await this.contract.releasePayment(
+      const tx = await millContract.releasePayment(
         truckId,
         pricePerKg,
         { 

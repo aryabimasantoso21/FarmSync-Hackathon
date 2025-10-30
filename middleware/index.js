@@ -585,24 +585,29 @@ async function main() {
       },
       blockchain: {
         rpcUrl: process.env.RPC_URL || 'http://localhost:8545',
-        privateKey: process.env.PRIVATE_KEY,
+        mill1PrivateKey: process.env.PRIVATE_KEY_MILL1,
+        mill2PrivateKey: process.env.PRIVATE_KEY_MILL2,
         contractAddress: process.env.CONTRACT_ADDRESS
       }
     };
 
     // Validate configuration
-    if (!config.blockchain.privateKey) {
-      throw new Error('PRIVATE_KEY not found in environment variables');
+    if (!process.env.PRIVATE_KEY_MILL1) {
+      throw new Error('PRIVATE_KEY_MILL1 not found in environment variables');
     }
-    if (!config.blockchain.contractAddress) {
+    if (!process.env.PRIVATE_KEY_MILL2) {
+      throw new Error('PRIVATE_KEY_MILL2 not found in environment variables');
+    }
+    if (!process.env.CONTRACT_ADDRESS) {
       throw new Error('CONTRACT_ADDRESS not found in environment variables');
     }
 
-    // Initialize blockchain handler
+    // Initialize blockchain handler with both mill keys
     const blockchainHandler = new BlockchainHandler(
-      config.blockchain.rpcUrl,
-      config.blockchain.privateKey,
-      config.blockchain.contractAddress,
+      process.env.RPC_URL,
+      process.env.PRIVATE_KEY_MILL1,
+      process.env.PRIVATE_KEY_MILL2,
+      process.env.CONTRACT_ADDRESS,
       CONTRACT_ABI
     );
 

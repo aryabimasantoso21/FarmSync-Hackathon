@@ -67,7 +67,8 @@ class MQTTHandler {
           await this.blockchainHandler.recordDeparture(
             data.truckId,
             data.weight,
-            data.estateId
+            data.estateId,
+            data.millAddress // Pass mill address from MQTT message
           );
         } else if (data.eventType === 'TAP-2') {
           // Arrival event (will trigger payment automatically)
@@ -75,7 +76,8 @@ class MQTTHandler {
           await this.blockchainHandler.recordArrival(
             data.truckId,
             data.weight,
-            data.estateId
+            data.estateId,
+            data.millAddress // Pass mill address to ensure correct payment signer
           );
         } else {
           console.log('❌ Unknown event type:', data.eventType);

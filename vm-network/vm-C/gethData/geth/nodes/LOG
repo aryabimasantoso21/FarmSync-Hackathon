@@ -1,0 +1,6 @@
+=============== Oct 30, 2025 (WIB) ===============
+20:55:46.999602 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+20:55:47.006020 db@open opening
+20:55:47.006779 version@stat F·[] S·0B[] Sc·[]
+20:55:47.008857 db@janitor F·2 G·0
+20:55:47.008895 db@open done T·2.849632ms
