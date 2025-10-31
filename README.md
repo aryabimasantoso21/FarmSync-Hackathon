@@ -724,16 +724,13 @@ This is a hackathon project demonstrating blockchain-IoT integration for supply 
 
 ---
 
-## 📄 License
-
-ISC License - Free to use for educational and commercial purposes.
-
----
-
 ## � Authors
 
-**Aryabima Santoso** - Lead Developer
-**FarmSync Team** - Blockchain IoT Integration
+**FarmSync Team**
+Rifqi Aufa Thufail - Project Manager
+Aryabima Kurnia Pratama Santoso - Blockchain Engineer
+Mokhammad Fariduddin - IoT Engineer
+Adhima Anfasa Bilqi - Fullstack Engineer
 
 **GitHub**: https://github.com/aryabimasantoso21/FarmSync-Hackathon
 
@@ -741,8 +738,8 @@ ISC License - Free to use for educational and commercial purposes.
 
 ## 🎯 Project Status
 
-**Current Version**: 1.0.0 (Production Ready)
-**Last Updated**: October 2025
+**Current Version**: Proof of Concept 
+**Last Updated**: 31 October 2025
 **Status**: ✅ All core features implemented and tested
 
 ### Roadmap
@@ -758,5 +755,3 @@ ISC License - Free to use for educational and commercial purposes.
 - [ ] Advanced analytics dashboard
 
 ---
-
-**⭐ Star this repo if you found it helpful!**
