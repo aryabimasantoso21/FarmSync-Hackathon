@@ -25,9 +25,14 @@
 ### 1️⃣ Start 3-Node Blockchain Network
 ```bash
 cd vm-network
+# Clean Nodes
+rm -rf vm-A/gethData vm-B/gethData vm-C/gethData
 
-# Install Geth 1.13.15
+# Install Geth 1.13.15 *if haven't downloaded yet
 ./install-geth-1.13.sh
+
+# initialize VMs
+cd vm-A && ./setup.sh > /dev/null 2>&1 && cd ../vm-B && ./setup.sh > /dev/null 2>&1 && cd ../vm-C && ./setup.sh > /dev/null 2>&1
 
 # Start all 3 nodes (Mill 1, Mill 2, Estate)
 ./start-all-nodes.sh
@@ -76,7 +81,7 @@ ESTATE_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 MILL1_ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 MILL2_ADDRESS=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 
-PRICE_PER_KG=1000000000000000  # 0.001 ETH per kg
+PRICE_PER_KG=100000  # 0.001 ETH per kg
 ```
 
 ### 4️⃣ Start Middleware
@@ -111,10 +116,10 @@ npm run mill1
 npm run mill2
 ```
 
-### 6️⃣ Or Use ESP32 Hardware
+### 6️⃣ Use ESP32 Hardware
 Upload the ESP32 code with NFC configuration:
-- **Mill 1 Card UID**: `18 82 35 A6 72 E8 48`
-- **Mill 2 Card UID**: `8A B5 2E D9`
+- **Mill 1 Card UID**: `xx xx xx xx`
+- **Mill 2 Card UID**: `xx xx xx xx`
 - Configure WiFi and MQTT broker IP
 - Tap NFC card on sensor to trigger TAP-1
 - Load TBS and tap again for TAP-2
@@ -421,60 +426,60 @@ vm-network/
              │
              │ Subscribe
              ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                      Middleware (Node.js)                              │
-│  ┌──────────────────┐              ┌───────────────────────────┐     │
-│  │ mqttHandler.js   │              │ blockchainHandler.js      │     │
-│  ├──────────────────┤              ├───────────────────────────┤     │
-│  │ • Parse JSON     │──Forward───▶│ • Select Mill Signer      │     │
-│  │ • Extract        │    TAP-1    │   (Mill1 or Mill2)        │     │
-│  │   millAddress    │   /TAP-2    │ • Manage nonce            │     │
-│  │ • Route to       │             │ • recordDeparture()       │     │
-│  │   blockchain     │             │ • recordArrival()         │     │
-│  └──────────────────┘             │ • releasePayment()        │     │
-│                                    └───────────┬───────────────┘     │
-└────────────────────────────────────────────────┼───────────────────────┘
-                                                 │
-                                                 │ ethers.js (JSON-RPC)
-                                                 ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│            3-Node Geth Private Network (Clique PoA)                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
-│  │   VM-A       │  │   VM-B       │  │   VM-C       │               │
-│  │  (Mill 1)    │  │  (Mill 2)    │  │  (Estate)    │               │
-│  │ :8545        │  │ :8546        │  │ :8547        │               │
-│  │ Validator    │◀─┼─ Validator   │◀─┼─ Validator   │               │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
-│         │                 │                  │                        │
-│         └─────────────────┴──────────────────┘                        │
-│                      Synchronized                                     │
-│                                                                        │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │         TBSSupplyChain Smart Contract                         │   │
-│  ├──────────────────────────────────────────────────────────────┤   │
-│  │                                                               │   │
-│  │  recordDeparture(truckId, weight, estateAddr, millAddr)     │   │
-│  │    ├─ Verify truck not in transit                           │   │
-│  │    ├─ Store: departureWeight, seller, buyer                 │   │
-│  │    └─ Emit: TruckDeparted                                   │   │
-│  │                                                               │   │
-│  │  recordArrival(truckId, weight)                             │   │
-│  │    ├─ Verify weight tolerance (max 1kg diff)               │   │
-│  │    ├─ Store: arrivalWeight                                  │   │
-│  │    └─ Emit: TruckArrived                                    │   │
-│  │                                                               │   │
-│  │  releasePayment(truckId)                                    │   │
-│  │    ├─ Calculate: price = arrivalWeight * PRICE_PER_KG      │   │
-│  │    ├─ Transfer ETH: mill → estate                           │   │
-│  │    ├─ Mark: paid = true                                     │   │
-│  │    └─ Emit: PaymentReleased                                 │   │
-│  │                                                               │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                      Middleware (Node.js)                             │
+│  ┌──────────────────┐               ┌───────────────────────────┐     │
+│  │ mqttHandler.js   │               │ blockchainHandler.js      │     │
+│  ├──────────────────┤               ├───────────────────────────┤     │
+│  │ • Parse JSON     │───Forward─────│ • Select Mill Signer      │     │
+│  │ • Extract        │    TAP-1      │   (Mill1 or Mill2)        │     │
+│  │   millAddress    │   /TAP-2      │ • Manage nonce            │     │
+│  │ • Route to       │               │ • recordDeparture()       │     │
+│  │   blockchain     │               │ • recordArrival()         │     │
+│  └──────────────────┘               │ • releasePayment()        │     │
+│                                     └───────────┬───────────────┘     │
+└─────────────────────────────────────────────────┼─────────────────────┘
+                                                  │
+                                                  │ ethers.js (JSON-RPC)
+                                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│            3-Node Geth Private Network (Clique PoA)                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                │
+│  │   VM-A       │  │   VM-B       │  │   VM-C       │                │
+│  │  (Mill 1)    │  │  (Mill 2)    │  │  (Estate)    │                │
+│  │ :8545        │  │ :8546        │  │ :8547        │                │
+│  │ Validator    │◀─┼─ Validator  │◀─┼─ Validator   │                │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘                │
+│         │                 │                 │                        │
+│         └─────────────────┴─────────────────┘                        │
+│                      Synchronized                                    │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐    │
+│  │         TBSSupplyChain Smart Contract                        │    │
+│  ├──────────────────────────────────────────────────────────────┤    │
+│  │                                                              │    │
+│  │  recordDeparture(truckId, weight, estateAddr, millAddr)      │    │
+│  │    ├─ Verify truck not in transit                            │    │
+│  │    ├─ Store: departureWeight, seller, buyer                  │    │
+│  │    └─ Emit: TruckDeparted                                    │    │
+│  │                                                              │    │
+│  │  recordArrival(truckId, weight)                              │    │
+│  │    ├─ Verify weight tolerance (max 1kg diff)                 │    │
+│  │    ├─ Store: arrivalWeight                                   │    │
+│  │    └─ Emit: TruckArrived                                     │    │
+│  │                                                              │    │
+│  │  releasePayment(truckId)                                     │    │
+│  │    ├─ Calculate: price = arrivalWeight * PRICE_PER_KG        │    │
+│  │    ├─ Transfer ETH: mill → estate                            │    │
+│  │    ├─ Mark: paid = true                                      │    │
+│  │    └─ Emit: PaymentReleased                                  │    │
+│  │                                                              │    │
+│  └──────────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────────┘
                                     ▲
                                     │
                     ┌───────────────┴────────────────┐
-                    │                                 │
+                    │                                │
             ┌───────▼────────┐             ┌─────────▼────────┐
             │   Backend API  │             │  React Frontend  │
             │  (Express.js)  │             │   (Dashboard)    │
