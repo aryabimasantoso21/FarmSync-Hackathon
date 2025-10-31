@@ -13,9 +13,17 @@ function LoginPage() {
         <div className="role-buttons">
           <button 
             className="role-button btn-mill"
-            onClick={() => navigate('/mill')}
+            onClick={() => navigate('/mill1')}
           >
-            🏭 Login as Mill
+            🏭 Login as Mill 1
+          </button>
+          
+          <button 
+            className="role-button btn-mill"
+            onClick={() => navigate('/mill2')}
+            style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}
+          >
+            🏭 Login as Mill 2
           </button>
           
           <button 

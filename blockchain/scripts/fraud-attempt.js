@@ -19,7 +19,7 @@ async function main() {
     // manipulasi berat kedatangan
     const fakeTx = await contract.recordArrival(
       "TRK-00001",
-      70,  // ubah berat menjadi 70 kg
+      72,  // ubah berat menjadi 72 kg
       "EST-00001"
     );
     

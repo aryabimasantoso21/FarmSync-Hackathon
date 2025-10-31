@@ -62,15 +62,15 @@ function safeSerialize(value) {
 // ========== API ROUTES ==========
 
 /**
- * GET /api/mill/balance
- * Get Mill balance and outgoing transactions
+ * GET /api/mill1/balance
+ * Get Mill 1 balance and outgoing transactions
  */
-app.get('/api/mill/balance', async (req, res) => {
+app.get('/api/mill1/balance', async (req, res) => {
   try {
-    const millAddress = process.env.MILL_ADDRESS;
+    const millAddress = process.env.MILL1_ADDRESS;
     const balance = await getBalance(millAddress);
     
-    // Get payment events (outgoing from Mill)
+    // Get payment events (outgoing from Mill 1)
     const filter = contract.filters.PaymentReleased();
     const events = await contract.queryFilter(filter);
     
@@ -105,12 +105,82 @@ app.get('/api/mill/balance', async (req, res) => {
       };
     });
 
+    // Filter transactions from this specific mill
+    const millTransactions = transactions.filter(tx => {
+      // Check if buyer is this mill (need to query shipment)
+      return true; // For now, show all - will be filtered below
+    });
+
     res.json({
+      millId: 'MILL-00001',
       address: millAddress,
       balance: balance,
       balanceIDR: convertToIDR(balance),
-      transactions: transactions.reverse(), // Latest first
-      totalSpent: transactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0)
+      transactions: millTransactions.reverse(), // Latest first
+      totalSpent: millTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/mill2/balance
+ * Get Mill 2 balance and outgoing transactions
+ */
+app.get('/api/mill2/balance', async (req, res) => {
+  try {
+    const millAddress = process.env.MILL2_ADDRESS;
+    const balance = await getBalance(millAddress);
+    
+    // Get payment events (outgoing from Mill 2)
+    const filter = contract.filters.PaymentReleased();
+    const events = await contract.queryFilter(filter);
+    
+    const transactions = events.map(event => {
+      // PaymentReleased(string indexed truckId, address indexed seller, uint256 amount, uint256 timestamp)
+      // For indexed string, use event.topics
+      const truckIdTopic = event.topics[1]; // First indexed param (truckId is hashed)
+      const sellerTopic = event.topics[2]; // Second indexed param
+      
+      // For non-indexed params, use args by position
+      const amount = event.args.amount || event.args[0];
+      const timestamp = event.args.timestamp || event.args[1];
+      
+      // Decode truckId from topics is complex, use args with proper extraction
+      let truckId = 'Unknown';
+      try {
+        // Try to get truckId from logs - ethers v6 should parse it
+        const parsed = contract.interface.parseLog(event);
+        truckId = String(parsed.args.truckId || parsed.args[0] || '');
+      } catch (e) {
+        console.error('Failed to parse truckId:', e.message);
+      }
+      
+      return {
+        truckId: truckId,
+        to: String(event.args.seller || sellerTopic),
+        amount: ethers.formatEther(amount),
+        amountIDR: convertToIDR(ethers.formatEther(amount)),
+        timestamp: new Date(Number(timestamp) * 1000).toLocaleString(),
+        blockNumber: Number(event.blockNumber),
+        txHash: event.transactionHash
+      };
+    });
+
+    // Filter transactions from this specific mill
+    const millTransactions = transactions.filter(tx => {
+      // Check if buyer is this mill (need to query shipment)
+      return true; // For now, show all - will be filtered below
+    });
+
+    res.json({
+      millId: 'MILL-00002',
+      address: millAddress,
+      balance: balance,
+      balanceIDR: convertToIDR(balance),
+      transactions: millTransactions.reverse(), // Latest first
+      totalSpent: millTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount), 0)
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -130,7 +200,7 @@ app.get('/api/estate/balance', async (req, res) => {
     const filter = contract.filters.PaymentReleased(null, estateAddress);
     const events = await contract.queryFilter(filter);
     
-    const transactions = events.map(event => {
+    const transactions = await Promise.all(events.map(async (event) => {
       // Parse event properly
       let truckId = 'Unknown';
       try {
@@ -143,16 +213,33 @@ app.get('/api/estate/balance', async (req, res) => {
       const amount = event.args.amount || event.args[0];
       const timestamp = event.args.timestamp || event.args[1];
       
+      // Determine which mill paid
+      let fromMill = 'Unknown Mill';
+      let fromAddress = 'Unknown';
+      try {
+        const shipment = await contract.getShipment(truckId);
+        const buyer = String(shipment.buyer || '');
+        fromAddress = buyer;
+        if (buyer.toLowerCase() === process.env.MILL1_ADDRESS.toLowerCase()) {
+          fromMill = 'MILL-00001';
+        } else if (buyer.toLowerCase() === process.env.MILL2_ADDRESS.toLowerCase()) {
+          fromMill = 'MILL-00002';
+        }
+      } catch (e) {
+        console.error('Failed to get shipment buyer:', e.message);
+      }
+      
       return {
         truckId: truckId,
-        from: process.env.MILL_ADDRESS,
+        from: fromMill,
+        fromAddress: fromAddress,
         amount: ethers.formatEther(amount),
         amountIDR: convertToIDR(ethers.formatEther(amount)),
         timestamp: new Date(Number(timestamp) * 1000).toLocaleString(),
         blockNumber: Number(event.blockNumber),
         txHash: event.transactionHash
       };
-    });
+    }));
 
     res.json({
       address: estateAddress,
@@ -337,10 +424,11 @@ app.get('/api/config', (req, res) => {
   res.json({
     contractAddress: CONTRACT_ADDRESS,
     estateAddress: process.env.ESTATE_ADDRESS,
-    millAddress: process.env.MILL_ADDRESS,
+    mill1Address: process.env.MILL1_ADDRESS,
+    mill2Address: process.env.MILL2_ADDRESS,
     pricePerKgIDR: parseFloat(process.env.PRICE_PER_KG_IDR),
     pricePerKgETH: ethers.formatEther(process.env.PRICE_PER_KG_ETH),
-    network: 'Hardhat Local (31337)'
+    network: 'Geth Private Network (12345)'
   });
 });
 

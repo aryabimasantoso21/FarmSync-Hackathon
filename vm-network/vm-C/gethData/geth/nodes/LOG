@@ -1,6 +1,22 @@
-=============== Oct 30, 2025 (WIB) ===============
-20:55:46.999602 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-20:55:47.006020 db@open opening
-20:55:47.006779 version@stat F·[] S·0B[] Sc·[]
-20:55:47.008857 db@janitor F·2 G·0
-20:55:47.008895 db@open done T·2.849632ms
+=============== Oct 31, 2025 (WIB) ===============
+14:38:19.173340 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+14:38:19.180766 db@open opening
+14:38:19.183929 version@stat F·[] S·0B[] Sc·[]
+14:38:19.187780 db@janitor F·2 G·0
+14:38:19.187817 db@open done T·7.026975ms
+16:00:49.196501 memdb@flush N·35035 S·3MiB
+16:00:49.210607 memdb@flush created L0@3 N·35035 S·617KiB "loc..seq,v889":"version,v1"
+16:00:49.210761 version@stat F·[1] S·617KiB[617KiB] Sc·[0.25]
+16:00:49.212178 memdb@flush committed F·1 T·15.526604ms
+16:00:49.214030 journal@remove removed @1
+16:40:49.196824 memdb@flush N·33799 S·3MiB
+16:40:49.212202 memdb@flush created L0@5 N·33799 S·579KiB "n:\x02..ing,v65817":"n:\xff..ong,v35432"
+16:40:49.212515 version@stat F·[2] S·1MiB[1MiB] Sc·[0.50]
+16:40:49.215789 memdb@flush committed F·1 T·18.30517ms
+16:40:49.216169 journal@remove removed @2
+16:41:10.591692 table@compaction L0·2 -> L1·0 S·1MiB Q·69110
+16:41:10.609286 table@build created L1@6 N·9741 S·325KiB "loc..seq,v889":"version,v1"
+16:41:10.609474 version@stat F·[0 1] S·325KiB[0B 325KiB] Sc·[0.00 0.00]
+16:41:10.611148 table@compaction committed F-1 S-871KiB Ke·0 D·59093 T·19.296385ms
+16:41:10.611650 table@remove removed @5
+16:41:10.611751 table@remove removed @3
